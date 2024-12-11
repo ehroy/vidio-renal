@@ -9,9 +9,8 @@ import { HttpsProxyAgent } from "https-proxy-agent";
 import { faker } from "@faker-js/faker";
 import fs from "fs-extra";
 import sleep from "delay";
-
-const apikey = "127466U8b45261445a29df68e9d5208dfd0b6dc";
-const apikeyTurbo = "1e5a97228ed35aacb289f0e938b89347";
+import inquirer from "inquirer";
+const apikey = "";
 
 const curl = ({ endpoint, data, header, proxy }) =>
   new Promise((resolve, reject) => {
@@ -40,20 +39,24 @@ const curl = ({ endpoint, data, header, proxy }) =>
         reject(err);
       });
   });
-function log(respon, jam = true) {
-  if (jam) {
-    var jamku = `[ ${chalk.blue(
-      new Date().toLocaleTimeString("en-US", {
-        hour12: false,
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      })
-    )} ]  =>`;
-  } else {
-    var jamku = "";
+function log(msg, type = "info") {
+  const timestamp = new Date().toLocaleTimeString();
+  switch (type) {
+    case "success":
+      console.log(`[${timestamp}] ➤  ${chalk.green(msg)}`);
+      break;
+    case "custom":
+      console.log(`[${timestamp}] ➤  ${chalk.magenta(msg)}`);
+      break;
+    case "error":
+      console.log(`[${timestamp}] ➤  ${chalk.red(msg)}`);
+      break;
+    case "warning":
+      console.log(`[${timestamp}] ➤  ${chalk.yellow(msg)}`);
+      break;
+    default:
+      console.log(`[${timestamp}] ➤  ${msg}`);
   }
-  return process.stdout.write(`${jamku} ${respon}`);
 }
 function headers(visitor, token, email) {
   if (!token) {
@@ -88,15 +91,42 @@ function headers(visitor, token, email) {
     };
   }
 }
+function filterNumber(phoneNumber) {
+  // Jika dimulai dengan '62', hapus '62'
+  if (phoneNumber.startsWith("62")) {
+    return phoneNumber.slice(2);
+  }
+  // Jika dimulai dengan '0', ubah '0' menjadi kosong
+  if (phoneNumber.startsWith("0")) {
+    return phoneNumber.slice(1);
+  }
+  // Jika tidak memenuhi kondisi di atas, kembalikan nomor asli
+  return phoneNumber;
+}
 (async () => {
   while (true) {
-    const Phone = readline.question(
-      chalk.yellowBright(`[ ???? ] `) +
-        "Input Number Not Include ( 62 or 0 ) : "
-    );
-    const password = readline.question(
-      chalk.yellowBright(`[ ???? ] `) + "Input Password : "
-    );
+    let Phone = await inquirer
+      .prompt([
+        {
+          type: "input",
+          name: "name",
+          message: "Input number ? ",
+        },
+      ])
+      .then((answers) => {
+        return answers.name;
+      });
+    let password = await inquirer
+      .prompt([
+        {
+          type: "input",
+          name: "name",
+          message: "Input password ? ",
+        },
+      ])
+      .then((answers) => {
+        return answers.name;
+      });
     const Generate =
       faker.person.lastName() +
       faker.person.firstName() +
@@ -104,6 +134,7 @@ function headers(visitor, token, email) {
       "@gmail.com";
 
     const email = Generate;
+    log(`create new email step 1 [ ${email} ] `, "success");
 
     const proxyauth = `https://1a48601ad88d747d779b__cr.id:d536875334c6af36@gw.dataimpulse.com:823`;
     let dataip;
@@ -121,16 +152,10 @@ function headers(visitor, token, email) {
         });
         // console.log(dataip);
       } catch (error) {
-        console.log(error);
-        console.log(
-          chalk.yellowBright(`[ INFO ] `) + chalk.greenBright("Proxy Not Found")
-        );
+        log("Proxy Not Found", "error");
       }
     } while (!dataip);
-    console.log(
-      chalk.yellowBright(`[ INFO ] `) +
-        chalk.greenBright("Data Proxy : " + dataip.respon.ip)
-    );
+    log("Data Proxy : " + dataip.respon.ip, "warning");
     const visitor = uuidv4().toLocaleUpperCase();
     const Register = await curl({
       endpoint: "https://api.vidio.com/api/register",
@@ -142,19 +167,17 @@ function headers(visitor, token, email) {
       proxy: proxyauth,
     });
     if (JSON.stringify(Register.respon).includes("access_token")) {
-      console.log(
-        chalk.yellowBright(`[ INFO ] `) + "Token Successfuly Create.."
-      );
-      console.log(
-        chalk.yellowBright(`[ INFO ] `) +
-          `Account :\n      - Email : ${Register.respon.auth.email}\n      - Status : ${Register.respon.auth.active}\n      - Password : ${password}\n`
+      log("Token Successfuly Create..", "success");
+      log(
+        `\nAccount :\n      - Email : ${Register.respon.auth.email}\n      - Status : ${Register.respon.auth.active}\n      - Password : ${password}\n`,
+        "custom"
       );
       fs.appendFileSync("accountregister.txt", `${email}|${password}\n`);
 
       const Sendverify = await curl({
         endpoint:
           "https://api.vidio.com/api/profile/phone/send_verification_code",
-        data: JSON.stringify({ phone: Phone }),
+        data: JSON.stringify({ phone: filterNumber(Phone) }),
         header: headers(
           visitor,
           Register.respon.auth.authentication_token,
@@ -164,12 +187,21 @@ function headers(visitor, token, email) {
       });
       //   console.log(Sendverify);
       if (Sendverify.respon.message === "Kode verifikasi terkirim!") {
-        console.log(
-          chalk.yellowBright(`[ INFO ] `) + Sendverify.respon.message
-        );
-        const OtpInput = readline.question(
-          chalk.yellowBright(`[ ???? ] `) + "Input Otp : "
-        );
+        log(Sendverify.respon.message, "success");
+        let OtpInput = await inquirer
+          .prompt([
+            {
+              type: "input",
+              name: "name",
+              message: "Input otp ? ",
+            },
+          ])
+          .then((answers) => {
+            return answers.name;
+          });
+        if (!OtpInput) {
+          continue;
+        }
         const VerifyOtp = await curl({
           endpoint: "https://api.vidio.com/api/profile/phone/verify",
           data: JSON.stringify({ verification_code: OtpInput }),
@@ -181,9 +213,18 @@ function headers(visitor, token, email) {
           proxy: proxyauth,
         });
         if (VerifyOtp.respon.message === "Yay, nomor HP terverifikasi!") {
-          console.log(
-            chalk.yellowBright(`[ INFO ] `) + VerifyOtp.respon.message
-          );
+          await inquirer
+            .prompt([
+              {
+                type: "input",
+                name: "name",
+                message: "entr jika sudah membeli paket ? ",
+              },
+            ])
+            .then((answers) => {
+              return answers.name;
+            });
+          log(VerifyOtp.respon.message, "success");
 
           let otpCode;
           let data;
@@ -191,9 +232,7 @@ function headers(visitor, token, email) {
           do {
             const sms = new SMSActivate(apikey, "smshub");
             const balance = await sms.getBalance();
-            console.log(
-              chalk.yellowBright(`[ INFO ] `) + `Saldo SMSHUB ${balance} руб`
-            );
+            log(`Saldo SMSHUB ${balance} руб`, "warning");
 
             try {
               do {
@@ -201,24 +240,18 @@ function headers(visitor, token, email) {
                 // console.log(data);
               } while (data === null);
             } catch (err) {
-              console.log(
-                chalk.yellowBright(`[ INFO ] `) +
-                  `Gagal Mendapatkan Nomer ${err}`
-              );
+              log(`Gagal Mendapatkan Nomer ${err}`, "error");
               await delay(5000);
               continue;
             }
             let { id, number } = data;
             await sms.setStatus(id, 1);
-            console.log(
-              chalk.yellowBright(`[ INFO ] `) +
-                `Try To Create With Number [ ${number} ]`
-            );
-            const PhoneNumber = number.toString().split("628")[1];
+            log(`Try To Create With Number [ ${number} ]`, "warning");
+            const PhoneNumber = filterNumber(number.toString());
             const SendverifySmsHub = await curl({
               endpoint:
                 "https://api.vidio.com/api/profile/phone/send_verification_code",
-              data: JSON.stringify({ phone: "8" + PhoneNumber }),
+              data: JSON.stringify({ phone: PhoneNumber }),
               header: headers(
                 visitor,
                 Register.respon.auth.authentication_token,
@@ -226,15 +259,11 @@ function headers(visitor, token, email) {
               ),
               proxy: proxyauth,
             });
-            console.log(SendverifySmsHub);
+
             if (
               SendverifySmsHub.respon.message === "Kode verifikasi terkirim!"
             ) {
-              console.log(
-                chalk.yellowBright(`[ INFO ] `) +
-                  SendverifySmsHub.respon.message,
-                "With Sms Hub"
-              );
+              log(SendverifySmsHub.respon.message + " With Sms Hub", "warning");
 
               let count = 0;
               do {
@@ -248,15 +277,11 @@ function headers(visitor, token, email) {
                 // console.log(otpCode);
               } while (otpCode === "STATUS_WAIT_CODE");
               if (otpCode === "STATUS_CANCEL") {
-                console.log(
-                  chalk.yellowBright(`[ INFO ] `) + "Cancel Phone Number"
-                );
+                log("Cancel Phone Number", "error");
                 continue;
               } else {
                 otp = otpCode;
-                console.log(
-                  chalk.yellowBright(`[ INFO ] `) + ("SMS OTP : " + otp)
-                );
+                log("SMS OTP : " + otp, "success");
               }
               const VerifyOtpHub = await curl({
                 endpoint: "https://api.vidio.com/api/profile/phone/verify",
@@ -271,17 +296,14 @@ function headers(visitor, token, email) {
               if (
                 VerifyOtpHub.respon.message === "Yay, nomor HP terverifikasi!"
               ) {
-                console.log(
-                  chalk.yellowBright(`[ INFO ] `) + VerifyOtpHub.respon.message,
-                  "With Sms Hub"
-                );
+                log(VerifyOtpHub.respon.message + " With Sms Hub", "success");
                 otpCode === "SUKSES";
                 const Generatenew =
                   faker.person.lastName() +
                   faker.person.firstName() +
                   faker.person.lastName() +
                   "@gmail.com";
-
+                log(`create new email step 5 [ ${Generatenew} ] `, "success");
                 const emailnew = Generatenew;
                 const visitornew = uuidv4().toLocaleUpperCase();
                 const Registernew = await curl({
@@ -296,13 +318,10 @@ function headers(visitor, token, email) {
                 if (
                   JSON.stringify(Registernew.respon).includes("access_token")
                 ) {
-                  console.log(
-                    chalk.yellowBright(`[ INFO ] `) +
-                      "Token Successfuly Create.."
-                  );
-                  console.log(
-                    chalk.yellowBright(`[ INFO ] `) +
-                      `Account :\n      - Email : ${Registernew.respon.auth.email}\n      - Status : ${Registernew.respon.auth.active}\n      - Password : ${password}\n`
+                  log("Token Successfuly Create..", "warning");
+                  log(
+                    `\nAccount :\n      - Email : ${Registernew.respon.auth.email}\n      - Status : ${Registernew.respon.auth.active}\n      - Password : ${password}\n`,
+                    "warning"
                   );
                   fs.appendFileSync(
                     "accountregister.txt",
@@ -312,7 +331,7 @@ function headers(visitor, token, email) {
                   const Sendverifynew = await curl({
                     endpoint:
                       "https://api.vidio.com/api/profile/phone/send_verification_code",
-                    data: JSON.stringify({ phone: Phone }),
+                    data: JSON.stringify({ phone: filterNumber(Phone) }),
                     header: headers(
                       visitornew,
                       Registernew.respon.auth.authentication_token,
@@ -324,13 +343,18 @@ function headers(visitor, token, email) {
                   if (
                     Sendverifynew.respon.message === "Kode verifikasi terkirim!"
                   ) {
-                    console.log(
-                      chalk.yellowBright(`[ INFO ] `) +
-                        Sendverifynew.respon.message
-                    );
-                    const OtpInputnew = readline.question(
-                      chalk.yellowBright(`[ ???? ] `) + "Input Otp : "
-                    );
+                    log(Sendverifynew.respon.message, "success");
+                    const OtpInputnew = await inquirer
+                      .prompt([
+                        {
+                          type: "input",
+                          name: "name",
+                          message: "Input password ? ",
+                        },
+                      ])
+                      .then((answers) => {
+                        return answers.name;
+                      });
                     const VerifyOtpnew = await curl({
                       endpoint:
                         "https://api.vidio.com/api/profile/phone/verify",
@@ -348,18 +372,15 @@ function headers(visitor, token, email) {
                       VerifyOtpnew.respon.message ===
                       "Yay, nomor HP terverifikasi!"
                     ) {
-                      console.log(
-                        chalk.yellowBright(`[ INFO ] `) +
-                          VerifyOtpnew.respon.message
-                      );
+                      log(VerifyOtpnew.respon.message, "success");
                       const claimBUndle = await curl({
                         endpoint: "https://api.vidio.com/telco/bundle/claim",
                         data: JSON.stringify({
                           data: {
                             type: "telco_bundle_claim",
                             attributes: {
-                              msisdn: "0" + Phone,
-                              operator: "telkomsel",
+                              msisdn: "0" + filterNumber(Phone),
+                              operator: "axis",
                             },
                           },
                         }),
@@ -388,18 +409,14 @@ function headers(visitor, token, email) {
                         },
                         proxy: proxyauth,
                       });
-                      console.log(claimBUndle);
+                      console.log(JSON.stringify(claimBUndle.respon));
                       let otpCodenew;
                       let datanew;
                       let otpnew;
                       do {
                         const smsnew = new SMSActivate(apikey, "smshub");
                         const balancenew = await smsnew.getBalance();
-                        console.log(
-                          chalk.yellowBright(`[ INFO ] `) +
-                            `Saldo SMSHUB ${balancenew} руб`
-                        );
-
+                        log(`Saldo SMSHUB ${balancenew} руб`, "warning");
                         try {
                           do {
                             datanew = await smsnew.getNumber(
@@ -410,27 +427,22 @@ function headers(visitor, token, email) {
                             // console.log(data);
                           } while (datanew === null);
                         } catch (err) {
-                          console.log(
-                            chalk.yellowBright(`[ INFO ] `) +
-                              `Gagal Mendapatkan Nomer ${err}`
-                          );
+                          log(`Gagal Mendapatkan Nomer ${err}`, "error");
                           await delay(5000);
                           continue;
                         }
                         let { id, number } = datanew;
                         await sms.setStatus(id, 1);
-                        console.log(
-                          chalk.yellowBright(`[ INFO ] `) +
-                            `Try To Create With Number [ ${number} ]`
+                        log(
+                          `Try To Create With Number [ ${number} ]`,
+                          "warning"
                         );
-                        const PhoneNumbernew = number
-                          .toString()
-                          .split("628")[1];
+                        const PhoneNumbernew = filterNumber(number.toString());
                         const SendverifySmsHubnewsu = await curl({
                           endpoint:
                             "https://api.vidio.com/api/profile/phone/send_verification_code",
                           data: JSON.stringify({
-                            phone: "8" + PhoneNumbernew,
+                            phone: PhoneNumbernew,
                           }),
                           header: headers(
                             visitornew,
@@ -439,15 +451,13 @@ function headers(visitor, token, email) {
                           ),
                           proxy: proxyauth,
                         });
-                        console.log(SendverifySmsHubnewsu);
                         if (
                           SendverifySmsHubnewsu.respon.message ===
                           "Kode verifikasi terkirim!"
                         ) {
-                          console.log(
-                            chalk.yellowBright(`[ INFO ] `) +
-                              SendverifySmsHubnewsu.respon.message,
-                            "With Sms Hub"
+                          log(
+                            ` ${SendverifySmsHubnewsu.respon.message} With Sms Hub`,
+                            "success"
                           );
 
                           let count = 0;
@@ -462,17 +472,11 @@ function headers(visitor, token, email) {
                             // console.log(otpCode);
                           } while (otpCodenew === "STATUS_WAIT_CODE");
                           if (otpCodenew === "STATUS_CANCEL") {
-                            console.log(
-                              chalk.yellowBright(`[ INFO ] `) +
-                                "Cancel Phone Number"
-                            );
+                            log("Cancel Phone Number", "error");
                             continue;
                           } else {
                             otpnew = otpCodenew;
-                            console.log(
-                              chalk.yellowBright(`[ INFO ] `) +
-                                ("SMS OTP : " + otpnew)
-                            );
+                            log("SMS OTP : " + otpnew, "success");
                           }
                           const VerifyOtpHubnewsu = await curl({
                             endpoint:
@@ -491,44 +495,38 @@ function headers(visitor, token, email) {
                             VerifyOtpHubnewsu.respon.message ===
                             "Yay, nomor HP terverifikasi!"
                           ) {
-                            console.log(
-                              chalk.yellowBright(`[ INFO ] `) +
-                                VerifyOtpHubnewsu.respon.message,
-                              "With Sms Hub"
+                            log(
+                              `${VerifyOtpHubnewsu.respon.message}`,
+                              "success"
                             );
                             otpCode === "SUKSES";
                           }
                         }
                       } while (otpCode === "STATUS_CANCEL");
                     } else {
+                      log(VerifyOtpnew.respon.message, "error");
                     }
                   } else {
+                    log(Sendverifynew.respon.message, "error");
                   }
                 } else {
+                  log("Token Not Successfuly Create..", "error");
                 }
               } else {
-                console.log(
-                  chalk.redBright(`[ INFO ] `) + VerifyOtpHub.respon.message,
-                  "With Sms Hub"
-                );
+                log(VerifyOtpHub.respon.message + " With Sms Hub", "error");
               }
             } else {
-              console.log(
-                chalk.redBright(`[ INFO ] `) + SendverifySmsHub.respon.message,
-                "With Sms Hub"
-              );
+              log(SendverifySmsHub.respon.message + " With Sms Hub", "error");
             }
           } while (otpCode === "STATUS_CANCEL");
         } else {
-          console.log(chalk.redBright(`[ INFO ] `) + VerifyOtp.respon.message);
+          log(VerifyOtp.respon.message, "error");
         }
       } else {
-        console.log(chalk.redBright(`[ INFO ] `) + Sendverify.respon.message);
+        log(Sendverify.respon.message, "error");
       }
     } else {
-      console.log(
-        chalk.redBright(`[ INFO ] `) + "Token Not Successfuly Create.."
-      );
+      log("Token Not Successfuly Create..", "error");
     }
     console.log("");
   }

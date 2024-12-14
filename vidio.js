@@ -10,21 +10,36 @@ import { af_ZA, faker } from "@faker-js/faker";
 import fs from "fs-extra";
 import sleep from "delay";
 import inquirer from "inquirer";
-const apikey = "";
+import puppeteer from "puppeteer-extra";
+import StealthPlugin from "puppeteer-extra-plugin-stealth";
+process.env.NODE_NO_WARNINGS = "1";
 
-const curl = ({ endpoint, data, header, proxy }) =>
+const stealthPlugin = StealthPlugin();
+["chrome.runtime", "navigator.languages"].forEach((a) =>
+  stealthPlugin.enabledEvasions.delete(a)
+);
+
+puppeteer.use(stealthPlugin);
+const apikey = "101139U2a9a9d4dd19e79d40c38996487e731e6";
+
+const curl = ({ endpoint, data, header, proxy, method = null }) =>
   new Promise((resolve, reject) => {
     let fetchData = {
       headers: header,
       agent: new HttpsProxyAgent(proxy),
     };
-    // console.log(fetchData);
-    if (data) {
-      fetchData.method = "POST";
+    if (method === "PATCH") {
+      fetchData.method = "PATCH";
       fetchData.body = data;
     } else {
-      fetchData.method = "GET";
+      if (data) {
+        fetchData.method = "POST";
+        fetchData.body = data;
+      } else {
+        fetchData.method = "GET";
+      }
     }
+
     fetch(endpoint, fetchData)
       .then((res) => res)
       .then(async (res) => {
@@ -58,36 +73,33 @@ function log(msg, type = "info") {
       console.log(`[${timestamp}] ➤  ${msg}`);
   }
 }
-function headers(visitor, token, email) {
+function headers(visitor, token, email, tokenx) {
   if (!token) {
     return {
       Host: "api.vidio.com",
-      "X-VISITOR-ID": visitor,
-      "X-API-App-Info": "ios/iOS16.7.5/6.26.0-2105",
-      Accept: "*/*",
-      "Accept-Language": "id",
-      "X-API-Platform": "app-ios",
-      "User-Agent": "vidioios/6.26.0 2105",
-      Referer: "ios-app://com.kmk.vidio",
-      Connection: "keep-alive",
-      "X-API-Auth": "laZOmogezono5ogekaso5oz4Mezimew1",
-      "Content-Type": "application/json",
+      "User-Agent": "vidioandroid/6.41.11-0703defa3c (3191426)",
+      "Accept-Encoding": "gzip",
+      referer: "android-app://com.vidio.android",
+      "x-api-platform": "app-android",
+      "x-api-auth": "laZOmogezono5ogekaso5oz4Mezimew1",
+      "x-api-app-info": "android/7.1.2/6.41.11-0703defa3c-3191426",
+      "accept-language": "en",
+      "x-visitor-id": visitor,
     };
   } else {
     return {
       Host: "api.vidio.com",
-      "X-VISITOR-ID": visitor,
-      "X-API-App-Info": "ios/iOS16.7.5/6.26.0-2105",
-      Accept: "*/*",
-      "X-USER-EMAIL": email,
-      "Accept-Language": "id",
-      "X-API-Platform": "app-ios",
-      "User-Agent": "vidioios/6.26.0 2105",
-      Referer: "ios-app://com.kmk.vidio",
-      Connection: "keep-alive",
-      "X-USER-TOKEN": token,
-      "X-API-Auth": "laZOmogezono5ogekaso5oz4Mezimew1",
-      "Content-Type": "application/json",
+      "User-Agent": "vidioandroid/6.41.11-0703defa3c (3191426)",
+      "Accept-Encoding": "gzip",
+      referer: "android-app://com.vidio.android",
+      "x-api-platform": "app-android",
+      "x-api-auth": "laZOmogezono5ogekaso5oz4Mezimew1",
+      "x-api-app-info": "android/7.1.2/6.41.11-0703defa3c-3191426",
+      "accept-language": "en",
+      "x-user-email": email,
+      "x-user-token": tokenx,
+      "x-visitor-id": visitor,
+      "x-authorization": token,
     };
   }
 }
@@ -104,10 +116,10 @@ function filterNumber(phoneNumber) {
   return phoneNumber;
 }
 (async () => {
-  let Registernew;
-  let visitornew;
-  let emailnew;
   while (true) {
+    let Registernew;
+    let visitornew;
+    let emailnew;
     let Phone = await inquirer
       .prompt([
         {
@@ -136,7 +148,7 @@ function filterNumber(phoneNumber) {
       faker.person.lastName() +
       "@gmail.com";
 
-    const email = Generate;
+    const email = Generate.replace(/[^a-zA-Z0-9@.]/g, "");
     log(`create new email step 1 [ ${email} ] `, "success");
 
     const proxyauth = `https://1a48601ad88d747d779b__cr.id:d536875334c6af36@gw.dataimpulse.com:823`;
@@ -162,13 +174,14 @@ function filterNumber(phoneNumber) {
     const visitor = uuidv4().toLocaleUpperCase();
     const Register = await curl({
       endpoint: "https://api.vidio.com/api/register",
-      data: JSON.stringify({
+      data: new URLSearchParams({
         email: email,
         password: password,
       }),
       header: headers(visitor, null),
       proxy: proxyauth,
     });
+    // console.log(Register.respon);
     if (JSON.stringify(Register.respon).includes("access_token")) {
       log("Token Successfuly Create..", "success");
       log(
@@ -176,367 +189,665 @@ function filterNumber(phoneNumber) {
         "custom"
       );
       fs.appendFileSync("accountregister.txt", `${email}|${password}\n`);
-      let OtpInput;
-      do {
-        const Sendverify = await curl({
-          endpoint:
-            "https://api.vidio.com/api/profile/phone/send_verification_code",
-          data: JSON.stringify({ phone: filterNumber(Phone) }),
-          header: headers(
-            visitor,
-            Register.respon.auth.authentication_token,
-            Register.respon.auth.email
-          ),
-          proxy: proxyauth,
-        });
-        //   console.log(Sendverify);
-        if (Sendverify.respon.message === "Kode verifikasi terkirim!") {
-          log(Sendverify.respon.message, "success");
-          OtpInput = await inquirer
-            .prompt([
-              {
-                type: "input",
-                name: "name",
-                message: "Input otp ? ",
-              },
-            ])
-            .then((answers) => {
-              return answers.name;
-            });
-          if (!OtpInput) {
-            continue;
-          }
-        } else {
-          log(Sendverify.respon.message, "error");
+      const browser = await puppeteer.launch({
+        ignoreDefaultArgs: ["--enable-automation"],
+        userDataDir: "rand",
+        headless: false,
+        devtools: true,
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-notifications",
+          "--disable-features=site-per-process",
+          "--disable-dev-shm-usage",
+        ],
+      });
+
+      // Listener untuk menangkap semua request
+
+      const page = await browser.newPage();
+
+      page.on("console", (msg) => {});
+      let authorizationFound = false; // Variabel kontrol untuk menghentikan pemeriksaan
+      let cookie;
+      let crf;
+      // Aktifkan intercept request untuk memfilter berdasarkan URL
+      await page.setRequestInterception(true);
+
+      page.on("request", (request) => {
+        const url = request.url();
+
+        if (authorizationFound) {
+          request.continue(); // Lanjutkan permintaan jika header sudah ditemukan
+          return;
         }
 
-        if (!OtpInput) {
-          log("mengulang mengirim otp ", "warning");
+        // Periksa apakah URL sesuai dengan target
+        if (url === "https://www.vidio.com/dashboard/setting") {
+          const headers = request.headers();
+          if (headers["cookie"]) {
+            cookie = headers["cookie"];
+            crf = headers["x-csrf-token"];
+            authorizationFound = true; // Tandai bahwa header telah ditemukan
+          }
         }
-      } while (!OtpInput);
-      const VerifyOtp = await curl({
-        endpoint: "https://api.vidio.com/api/profile/phone/verify",
-        data: JSON.stringify({ verification_code: OtpInput }),
-        header: headers(
-          visitor,
-          Register.respon.auth.authentication_token,
-          Register.respon.auth.email
-        ),
+
+        request.continue(); // Lanjutkan permintaan lainnya
+      });
+      log("Navigated to the website.", "success");
+      await page.goto("https://www.vidio.com/users/login");
+      await page.waitForSelector('input[id="user_login"]', { visible: true });
+      await page.type('input[id="user_login"]', email, { delay: 20 });
+      await delay(1000);
+      await page.waitForSelector('input[id="user_password"]', {
+        visible: true,
+      });
+      await page.type('input[id="user_password"]', password, { delay: 20 });
+      await delay(1000);
+      await page.waitForSelector('input[id="onboarding-login-form-submit"]', {
+        visible: true,
+      });
+      await page.click('input[id="onboarding-login-form-submit"]');
+      await delay(1000);
+      await page.waitForSelector('a[aria-label="User"]', { visible: true });
+      await page.goto("https://www.vidio.com/dashboard/setting");
+      const Sendverify = await curl({
+        endpoint: "https://www.vidio.com/dashboard/setting/phone",
+        data: new URLSearchParams({
+          "user[phone]": filterNumber(Phone),
+        }),
+        header: {
+          accept:
+            "text/javascript, application/javascript, application/ecmascript, application/x-ecmascript, */*; q=0.01",
+          "accept-language": "en-US,en;q=0.9",
+          "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+          cookie: cookie,
+          origin: "https://www.vidio.com",
+          priority: "u=1, i",
+          referer: "https://www.vidio.com/dashboard/setting",
+          "sec-ch-ua":
+            '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+          "sec-ch-ua-mobile": "?0",
+          "sec-ch-ua-platform": '"Windows"',
+          "sec-fetch-dest": "empty",
+          "sec-fetch-mode": "cors",
+          "sec-fetch-site": "same-origin",
+          "user-agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+          "x-csrf-token": crf,
+          "x-requested-with": "XMLHttpRequest",
+        },
         proxy: proxyauth,
       });
-      if (VerifyOtp.respon.message === "Yay, nomor HP terverifikasi!") {
-        log(`${VerifyOtp.respon.message} ${Phone} register success`, "success");
-        await inquirer
+
+      if (Sendverify.respon.message === "Verification code sent!") {
+        await browser.close();
+        await delay(2000);
+        await fs.rmdirSync("rand", { recursive: true, force: true });
+        log(Sendverify.respon.message, "success");
+        let OtpInput = await inquirer
           .prompt([
             {
               type: "input",
               name: "name",
-              message: "enter jika sudah membeli paket ? ",
+              message: "Input otp ? ",
             },
           ])
           .then((answers) => {
             return answers.name;
           });
-
-        let otpCode;
-        let data;
-        let otp;
-
-        do {
-          const sms = new SMSActivate(apikey, "smshub");
-          const balance = await sms.getBalance();
-          log(`Saldo SMSHUB ${balance} руб`, "warning");
-
-          try {
-            do {
-              data = await sms.getNumber("fv", 6, "telkomsel");
-              // console.log(data);
-            } while (data === null);
-          } catch (err) {
-            log(`Gagal Mendapatkan Nomer ${err}`, "error");
-            await delay(5000);
-            continue;
-          }
-          let { id, number } = data;
-          await sms.setStatus(id, 1);
-          log(`Try To Switch Number in Account [ ${number} ]`, "warning");
-          const PhoneNumber = filterNumber(number.toString());
-          const SendverifySmsHub = await curl({
-            endpoint:
-              "https://api.vidio.com/api/profile/phone/send_verification_code",
-            data: JSON.stringify({ phone: PhoneNumber }),
-            header: headers(
-              visitor,
-              Register.respon.auth.authentication_token,
-              Register.respon.auth.email
-            ),
-            proxy: proxyauth,
-          });
-
-          if (SendverifySmsHub.respon.message === "Kode verifikasi terkirim!") {
-            log(
-              SendverifySmsHub.respon.message + " " + number + " With Sms Hub",
-              "warning"
-            );
-
-            let count = 0;
-            do {
-              otpCode = await sms.getCode(id);
-              // console.log(otpCode);
-              if (count === 60) {
-                await sms.setStatus(id, 8);
-              }
-              await delay(1000);
-              count++;
-              // console.log(otpCode);
-            } while (otpCode === "STATUS_WAIT_CODE");
-            if (otpCode === "STATUS_CANCEL") {
-              log("Cancel Phone Number", "error");
-              otpCode === "STATUS_CANCEL";
-            } else {
-              otp = otpCode;
-              log("SMS OTP : " + otp, "success");
-              const VerifyOtpHub = await curl({
-                endpoint: "https://api.vidio.com/api/profile/phone/verify",
-                data: JSON.stringify({ verification_code: otpCode }),
-                header: headers(
-                  visitor,
-                  Register.respon.auth.authentication_token,
-                  Register.respon.auth.email
-                ),
-                proxy: proxyauth,
-              });
-              if (
-                VerifyOtpHub.respon.message === "Yay, nomor HP terverifikasi!"
-              ) {
-                log(
-                  `success switch number with account [ ${email} ] => [ ${Phone} ] => [ ${number} ]` +
-                    " With Sms Hub",
-                  "success"
-                );
-
-                otpCode === "SUKSES";
-                const Generatenew =
-                  faker.person.lastName() +
-                  faker.person.firstName() +
-                  faker.person.lastName() +
-                  "@gmail.com";
-                log(
-                  `create new email step 5 [ ${Generatenew} ] with phone [ ${Phone} ] `,
-                  "success"
-                );
-                emailnew = Generatenew;
-                visitornew = uuidv4().toLocaleUpperCase();
-                Registernew = await curl({
-                  endpoint: "https://api.vidio.com/api/register",
-                  data: JSON.stringify({
-                    email: emailnew,
-                    password: password,
-                  }),
-                  header: headers(visitornew, null),
-                  proxy: proxyauth,
-                });
-                if (
-                  JSON.stringify(Registernew.respon).includes("access_token")
-                ) {
-                  log("Token Successfuly Create..", "warning");
-                  log(
-                    `\nAccount :\n      - Email : ${Registernew.respon.auth.email}\n      - Status : ${Registernew.respon.auth.active}\n      - Password : ${password}\n`,
-                    "warning"
-                  );
-                  fs.appendFileSync(
-                    "accountregister.txt",
-                    `${emailnew}|${password}\n`
-                  );
-                } else {
-                  log("Token Not Successfuly Create..", "error");
-                  otpCode = "STATUS_CANCEL";
-                }
-              } else {
-                log(
-                  VerifyOtpHub.respon.message + " " + number + " With Sms Hub",
-                  "error"
-                );
-                otpCode = "STATUS_CANCEL";
-              }
-            }
-          } else {
-            log(
-              SendverifySmsHub.respon.message + " " + number + " With Sms Hub",
-              "error"
-            );
-          }
-          log(`delay 10 sec to try get new number request`, "warning");
-          await sleep(10000);
-        } while (otpCode === "STATUS_CANCEL");
-
-        const Sendverifynew = await curl({
-          endpoint:
-            "https://api.vidio.com/api/profile/phone/send_verification_code",
-          data: JSON.stringify({ phone: filterNumber(Phone) }),
-          header: headers(
-            visitornew,
-            Registernew.respon.auth.authentication_token,
-            Registernew.respon.auth.email
-          ),
+        if (!OtpInput) {
+          continue;
+        }
+        const VerifyOtp = await curl({
+          endpoint: "https://www.vidio.com/dashboard/setting/phone",
+          data: new URLSearchParams({
+            "user[phone_confirmation_code]": OtpInput,
+          }),
+          header: {
+            accept:
+              "text/javascript, application/javascript, application/ecmascript, application/x-ecmascript, */*; q=0.01",
+            "accept-language": "en-US,en;q=0.9",
+            "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+            cookie: cookie,
+            origin: "https://www.vidio.com",
+            priority: "u=1, i",
+            referer: "https://www.vidio.com/dashboard/setting",
+            "sec-ch-ua":
+              '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": '"Windows"',
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "same-origin",
+            "user-agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            "x-csrf-token": crf,
+            "x-requested-with": "XMLHttpRequest",
+          },
           proxy: proxyauth,
+          method: "PATCH",
         });
-        // console.log(Sendverify);
-        if (Sendverifynew.respon.message === "Kode verifikasi terkirim!") {
-          log(Sendverifynew.respon.message, "success");
-          const OtpInputnew = await inquirer
+
+        // console.log(VerifyOtp.respon);
+        if (VerifyOtp.respon.verified) {
+          log(
+            ` Verified status ${VerifyOtp.respon.verified} ${Phone} register success`,
+            "success"
+          );
+          await inquirer
             .prompt([
               {
                 type: "input",
                 name: "name",
-                message: "Input otp ? ",
+                message: "enter jika sudah membeli paket ? ",
               },
             ])
             .then((answers) => {
               return answers.name;
             });
-          const VerifyOtpnew = await curl({
-            endpoint: "https://api.vidio.com/api/profile/phone/verify",
-            data: JSON.stringify({
-              verification_code: OtpInputnew,
-            }),
-            header: headers(
-              visitornew,
-              Registernew.respon.auth.authentication_token,
-              Registernew.respon.auth.email
-            ),
-            proxy: proxyauth,
-          });
-          if (VerifyOtpnew.respon.message === "Yay, nomor HP terverifikasi!") {
-            log(VerifyOtpnew.respon.message, "success");
-            const claimBUndle = await curl({
-              endpoint: "https://api.vidio.com/telco/bundle/claim",
-              data: JSON.stringify({
-                data: {
-                  type: "telco_bundle_claim",
-                  attributes: {
-                    msisdn: "0" + filterNumber(Phone),
-                    operator: "axis",
-                  },
-                },
+
+          let otpCode;
+          let data;
+          let otp;
+
+          do {
+            const sms = new SMSActivate(apikey, "smshub");
+            const balance = await sms.getBalance();
+            log(`Saldo SMSHUB ${balance} руб`, "warning");
+
+            try {
+              do {
+                data = await sms.getNumber("fv", 6, "telkomsel");
+                // console.log(data);
+              } while (data === null);
+            } catch (err) {
+              log(`Gagal Mendapatkan Nomer ${err}`, "error");
+              await delay(5000);
+              continue;
+            }
+            let { id, number } = data;
+            await sms.setStatus(id, 1);
+            log(`Try To Switch Number in Account [ ${number} ]`, "warning");
+            const PhoneNumber = filterNumber(number.toString());
+            const SendverifySmsHub = await curl({
+              endpoint: "https://www.vidio.com/dashboard/setting/phone",
+              data: new URLSearchParams({
+                "user[phone]": filterNumber(number.toString()),
               }),
               header: {
-                accept: "*/*",
-                "accept-language": "id",
-                "content-type": "application/vnd.api+json",
-                cookie:
-                  "afUserId=52bc9545-b087-45c2-aa82-6fe5ae5d2dbd-p; ahoy_visitor=63103961-7c75-43b9-a1b2-d8b3d0495d0e; _CEFT=Q%3D%3D%3D; USER_DATA=%7B%22attributes%22%3A%5B%5D%2C%22subscribedToOldSdk%22%3Afalse%2C%22deviceUuid%22%3A%22beece86b-adf6-40ce-8b49-05c2b629693e%22%2C%22deviceAdded%22%3Atrue%7D; OPT_IN_SHOWN_TIME=1716447486915; SOFT_ASK_STATUS=%7B%22actualValue%22%3A%22dismissed%22%2C%22MOE_DATA_TYPE%22%3A%22string%22%7D; ahoy_visit=3c954a29-a09e-472f-be0f-08003bd8dc8c; _gid=GA1.2.1696319918.1733901165; _gcl_au=1.1.1609771823.1733901165; _ga_JBTBSESXVN=GS1.1.1733901165.3.0.1733901165.60.0.0; _ga=GA1.1.980845800.1716447482; _tt_enable_cookie=1; _ttp=jnKE66g2ve0bhcZFyPA-UDXSeDt.tt.1; cebs=1; _ce.clock_data=867%2C113.11.183.213%2C1%2Cf51bb482c660d0eeadd1f058058a2b35%2CChrome%2CID; cebsp_=1; AF_SYNC=1733901168563; moe_uuid=beece86b-adf6-40ce-8b49-05c2b629693e; SESSION=%7B%22sessionKey%22%3A%229ec681eb-c7ea-4ba2-b23a-ba13234403a8%22%2C%22sessionStartTime%22%3A%222024-12-11T07%3A12%3A51.962Z%22%2C%22sessionMaxTime%22%3A1800%2C%22customIdentifiersToTrack%22%3A%5B%5D%2C%22sessionExpiryTime%22%3A1733902972201%2C%22numberOfSessions%22%3A4%2C%22currentSource%22%3A%7B%22source_url%22%3A%22https%3A%2F%2Fm.vidio.com%2Ftelcos%2Fxl%2Fclaim%2F%3Futm_source%3Dsmsaxis%22%2C%22source%22%3A%22smsaxis%22%7D%7D; _ce.s=v~57dea64cf6670416c4bcb0d253fa3a35667c0226~lcw~1733901183476~lva~1733901168014~vpv~3~v11.fhb~1733901168303~v11.lhb~1733901168304~vir~new~v11.cs~265059~v11.s~53a3ba20-b78f-11ef-8a35-79f9e0f8bf79~v11.sla~1733901183476~gtrk.la~m4jjzvn8~lcw~1733901183477",
-                origin: "https://m.vidio.com",
+                accept:
+                  "text/javascript, application/javascript, application/ecmascript, application/x-ecmascript, */*; q=0.01",
+                "accept-language": "en-US,en;q=0.9",
+                "content-type":
+                  "application/x-www-form-urlencoded; charset=UTF-8",
+                cookie: cookie,
+                origin: "https://www.vidio.com",
                 priority: "u=1, i",
-                referer: "https://m.vidio.com/",
+                referer: "https://www.vidio.com/dashboard/setting",
                 "sec-ch-ua":
                   '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
                 "sec-ch-ua-mobile": "?0",
                 "sec-ch-ua-platform": '"Windows"',
                 "sec-fetch-dest": "empty",
                 "sec-fetch-mode": "cors",
-                "sec-fetch-site": "same-site",
+                "sec-fetch-site": "same-origin",
                 "user-agent":
                   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-                "x-api-key":
-                  "CH1ZFsN4N/MIfAds1DL9mP151CNqIpWHqZGRr+LkvUyiq3FRPuP1Kt6aK+pG3nEC1FXt0ZAAJ5FKP8QU8CZ5/uijyOF/nlIaEGjHNo4DiQ5va7b5t6levFC7hSUkZYpSSFspswvt1d2lb91zs/4d8+yhLIkcpGn9zStUWLBSBZM=",
-                "x-api-platform": "web-mobile",
-                "x-secure-level": "2",
+                "x-csrf-token": crf,
+                "x-requested-with": "XMLHttpRequest",
               },
               proxy: proxyauth,
             });
-            console.log(JSON.stringify(claimBUndle.respon));
-            let otpCodenew;
-            let datanew;
-            let otpnew;
-            do {
-              const smsnew = new SMSActivate(apikey, "smshub");
-              const balancenew = await smsnew.getBalance();
-              log(`Saldo SMSHUB ${balancenew} руб`, "warning");
-              try {
-                do {
-                  datanew = await smsnew.getNumber("fv", 6, "telkomsel");
-                  // console.log(data);
-                } while (datanew === null);
-              } catch (err) {
-                log(`Gagal Mendapatkan Nomer ${err}`, "error");
-                await delay(5000);
-                continue;
-              }
-              let { id, number } = datanew;
-              await smsnew.setStatus(id, 1);
-              log(`Try To Switch Number in Account [ ${number} ]`, "warning");
-              const PhoneNumbernew = filterNumber(number.toString());
-              const SendverifySmsHubnewsu = await curl({
-                endpoint:
-                  "https://api.vidio.com/api/profile/phone/send_verification_code",
-                data: JSON.stringify({
-                  phone: PhoneNumbernew,
-                }),
-                header: headers(
-                  visitornew,
-                  Registernew.respon.auth.authentication_token,
-                  Registernew.respon.auth.email
-                ),
-                proxy: proxyauth,
-              });
-              if (
-                SendverifySmsHubnewsu.respon.message ===
-                "Kode verifikasi terkirim!"
-              ) {
-                log(
-                  ` ${SendverifySmsHubnewsu.respon.message} With Sms Hub`,
-                  "success"
-                );
 
-                let count = 0;
-                do {
-                  otpCodenew = await smsnew.getCode(id);
-                  // console.log(otpCode);
-                  if (count === 60) {
-                    await smsnew.setStatus(id, 8);
-                  }
-                  await delay(1000);
-                  count++;
-                  // console.log(otpCode);
-                } while (otpCodenew === "STATUS_WAIT_CODE");
-                if (otpCodenew === "STATUS_CANCEL") {
-                  log("Cancel Phone Number", "error");
-                  continue;
-                } else {
-                  otpnew = otpCodenew;
-                  log("SMS OTP : " + otpnew, "success");
+            if (SendverifySmsHub.respon.message === "Verification code sent!") {
+              log(
+                SendverifySmsHub.respon.message +
+                  " " +
+                  number +
+                  " With Sms Hub",
+                "warning"
+              );
+
+              let count = 0;
+              do {
+                otpCode = await sms.getCode(id);
+                // console.log(otpCode);
+                if (count === 60) {
+                  await sms.setStatus(id, 8);
                 }
-                const VerifyOtpHubnewsu = await curl({
-                  endpoint: "https://api.vidio.com/api/profile/phone/verify",
-                  data: JSON.stringify({
-                    verification_code: otpCode,
+                await delay(1000);
+                count++;
+                // console.log(otpCode);
+              } while (otpCode === "STATUS_WAIT_CODE");
+              if (otpCode === "STATUS_CANCEL") {
+                log("Cancel Phone Number", "error");
+                otpCode === "STATUS_CANCEL";
+              } else {
+                otp = otpCode;
+                log("SMS OTP : " + otp, "success");
+                const VerifyOtpHub = await curl({
+                  endpoint: "https://www.vidio.com/dashboard/setting/phone",
+                  data: new URLSearchParams({
+                    "user[phone_confirmation_code]": otp,
                   }),
-                  header: headers(
-                    visitornew,
-                    Registernew.respon.auth.authentication_token,
-                    Registernew.respon.auth.email
-                  ),
+                  header: {
+                    accept:
+                      "text/javascript, application/javascript, application/ecmascript, application/x-ecmascript, */*; q=0.01",
+                    "accept-language": "en-US,en;q=0.9",
+                    "content-type":
+                      "application/x-www-form-urlencoded; charset=UTF-8",
+                    cookie: cookie,
+                    origin: "https://www.vidio.com",
+                    priority: "u=1, i",
+                    referer: "https://www.vidio.com/dashboard/setting",
+                    "sec-ch-ua":
+                      '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+                    "sec-ch-ua-mobile": "?0",
+                    "sec-ch-ua-platform": '"Windows"',
+                    "sec-fetch-dest": "empty",
+                    "sec-fetch-mode": "cors",
+                    "sec-fetch-site": "same-origin",
+                    "user-agent":
+                      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                    "x-csrf-token": crf,
+                    "x-requested-with": "XMLHttpRequest",
+                  },
                   proxy: proxyauth,
+                  method: "PATCH",
                 });
-                if (
-                  VerifyOtpHubnewsu.respon.message ===
-                  "Yay, nomor HP terverifikasi!"
-                ) {
-                  log(`${VerifyOtpHubnewsu.respon.message}`, "success");
+                if (VerifyOtpHub.respon.verified) {
+                  log(
+                    `success switch number with account [ ${email} ] => [ ${Phone} ] => [ ${number} ]` +
+                      " With Sms Hub",
+                    "success"
+                  );
 
                   otpCode === "SUKSES";
+                  const Generatenew =
+                    faker.person.lastName() +
+                    faker.person.firstName() +
+                    faker.person.lastName() +
+                    "@gmail.com";
+                  log(
+                    `create new email step 5 [ ${Generatenew} ] with phone [ ${Phone} ] `,
+                    "success"
+                  );
+                  emailnew = Generatenew.replace(/[^a-zA-Z0-9@.]/g, "");
+                  visitornew = uuidv4().toLocaleUpperCase();
+                  Registernew = await curl({
+                    endpoint: "https://api.vidio.com/api/register",
+                    data: new URLSearchParams({
+                      email: emailnew,
+                      password: password,
+                    }),
+                    header: headers(visitornew, null),
+                    proxy: proxyauth,
+                  });
+                  if (
+                    JSON.stringify(Registernew.respon).includes("access_token")
+                  ) {
+                    log("Token Successfuly Create..", "warning");
+                    log(
+                      `\nAccount :\n      - Email : ${Registernew.respon.auth.email}\n      - Status : ${Registernew.respon.auth.active}\n      - Password : ${password}\n`,
+                      "warning"
+                    );
+                    fs.appendFileSync(
+                      "accountregister.txt",
+                      `${emailnew}|${password}\n`
+                    );
+                  } else {
+                    log("Token Not Successfuly Create..", "error");
+                    otpCode = "STATUS_CANCEL";
+                  }
+                } else {
+                  log(
+                    VerifyOtpHub.respon.message +
+                      " " +
+                      number +
+                      " With Sms Hub",
+                    "error"
+                  );
+                  otpCode = "STATUS_CANCEL";
                 }
               }
-            } while (otpCode === "STATUS_CANCEL");
+            } else {
+              log(
+                SendverifySmsHub.respon.message +
+                  " " +
+                  number +
+                  " With Sms Hub",
+                "error"
+              );
+            }
+            log(`delay 10 sec to try get new number request`, "warning");
+            await sleep(10000);
+          } while (otpCode === "STATUS_CANCEL");
+          const browsers = await puppeteer.launch({
+            ignoreDefaultArgs: ["--enable-automation"],
+            userDataDir: "rand",
+            headless: false,
+            devtools: true,
+            args: [
+              "--no-sandbox",
+              "--disable-setuid-sandbox",
+              "--disable-notifications",
+              "--disable-features=site-per-process",
+              "--disable-dev-shm-usage",
+            ],
+          });
+
+          // Listener untuk menangkap semua request
+
+          const pages = await browsers.newPage();
+
+          pages.on("console", (msg) => {});
+          let authorizationFounds = false; // Variabel kontrol untuk menghentikan pemeriksaan
+          let cookies;
+          let crfs;
+          // Aktifkan intercept request untuk memfilter berdasarkan URL
+          await pages.setRequestInterception(true);
+
+          pages.on("request", (request) => {
+            const url = request.url();
+
+            if (authorizationFounds) {
+              request.continue(); // Lanjutkan permintaan jika header sudah ditemukan
+              return;
+            }
+
+            // Periksa apakah URL sesuai dengan target
+            if (url === "https://www.vidio.com/dashboard/setting") {
+              const headers = request.headers();
+              if (headers["cookie"]) {
+                cookies = headers["cookie"];
+                crfs = headers["x-csrf-token"];
+                authorizationFounds = true; // Tandai bahwa header telah ditemukan
+              }
+            }
+
+            request.continue(); // Lanjutkan permintaan lainnya
+          });
+          log("Navigated to the website.", "success");
+          await pages.goto("https://www.vidio.com/users/login");
+          await pages.waitForSelector('input[id="user_login"]', {
+            visible: true,
+          });
+          await pages.type('input[id="user_login"]', emailnew, { delay: 20 });
+          await delay(1000);
+          await pages.waitForSelector('input[id="user_password"]', {
+            visible: true,
+          });
+          await pages.type('input[id="user_password"]', password, {
+            delay: 20,
+          });
+          await delay(1000);
+          await pages.waitForSelector(
+            'input[id="onboarding-login-form-submit"]',
+            {
+              visible: true,
+            }
+          );
+          await pages.click('input[id="onboarding-login-form-submit"]');
+          await delay(1000);
+          await pages.waitForSelector('a[aria-label="User"]', {
+            visible: true,
+          });
+          await pages.goto("https://www.vidio.com/dashboard/setting");
+          const Sendverifynew = await curl({
+            endpoint: "https://www.vidio.com/dashboard/setting/phone",
+            data: new URLSearchParams({
+              "user[phone]": filterNumber(Phone),
+            }),
+            header: {
+              accept:
+                "text/javascript, application/javascript, application/ecmascript, application/x-ecmascript, */*; q=0.01",
+              "accept-language": "en-US,en;q=0.9",
+              "content-type":
+                "application/x-www-form-urlencoded; charset=UTF-8",
+              cookie: cookies,
+              origin: "https://www.vidio.com",
+              priority: "u=1, i",
+              referer: "https://www.vidio.com/dashboard/setting",
+              "sec-ch-ua":
+                '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+              "sec-ch-ua-mobile": "?0",
+              "sec-ch-ua-platform": '"Windows"',
+              "sec-fetch-dest": "empty",
+              "sec-fetch-mode": "cors",
+              "sec-fetch-site": "same-origin",
+              "user-agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+              "x-csrf-token": crfs,
+              "x-requested-with": "XMLHttpRequest",
+            },
+            proxy: proxyauth,
+          });
+
+          if (Sendverifynew.respon.message === "Verification code sent!") {
+            await browsers.close();
+            await delay(2000);
+            await fs.rmdirSync("rand", { recursive: true, force: true });
+            log(Sendverifynew.respon.message, "success");
+            const OtpInputnew = await inquirer
+              .prompt([
+                {
+                  type: "input",
+                  name: "name",
+                  message: "Input otp ? ",
+                },
+              ])
+              .then((answers) => {
+                return answers.name;
+              });
+            const VerifyOtpnew = await curl({
+              endpoint: "https://www.vidio.com/dashboard/setting/phone",
+              data: new URLSearchParams({
+                "user[phone_confirmation_code]": OtpInputnew,
+              }),
+              header: {
+                accept:
+                  "text/javascript, application/javascript, application/ecmascript, application/x-ecmascript, */*; q=0.01",
+                "accept-language": "en-US,en;q=0.9",
+                "content-type":
+                  "application/x-www-form-urlencoded; charset=UTF-8",
+                cookie: cookies,
+                origin: "https://www.vidio.com",
+                priority: "u=1, i",
+                referer: "https://www.vidio.com/dashboard/setting",
+                "sec-ch-ua":
+                  '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+                "sec-ch-ua-mobile": "?0",
+                "sec-ch-ua-platform": '"Windows"',
+                "sec-fetch-dest": "empty",
+                "sec-fetch-mode": "cors",
+                "sec-fetch-site": "same-origin",
+                "user-agent":
+                  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                "x-csrf-token": crfs,
+                "x-requested-with": "XMLHttpRequest",
+              },
+              proxy: proxyauth,
+              method: "PATCH",
+            });
+            if (VerifyOtpnew.respon.verified) {
+              log(
+                ` Verified status ${VerifyOtp.respon.verified} ${Phone} register success`,
+                "success"
+              );
+              const claimBUndle = await curl({
+                endpoint: "https://api.vidio.com/telco/bundle/claim",
+                data: JSON.stringify({
+                  data: {
+                    type: "telco_bundle_claim",
+                    attributes: {
+                      msisdn: "0" + filterNumber(Phone),
+                      operator: "axis",
+                    },
+                  },
+                }),
+                header: {
+                  accept: "*/*",
+                  "accept-language": "id",
+                  "content-type": "application/vnd.api+json",
+                  cookie:
+                    "ahoy_visitor=461df5fb-ea48-47e9-84fb-fa9f644c393e; country_id=ID; _vidio_session=WVF5a2JYZ2hCQUZScGdRT0hJL1pJYS8zcENjRWp5c2syWWs2aUwzenZTcThmSVE5Zmk3aVM3OFU5SHorUnpxT3FVNzhVVGNLZkdCREdOcVBZL2R5ckE0clA5ZDkzaXVtUnI0bUZFV0NUNHF3R2VLSGpYTlQrUG15NDBkK2dNTlluRTN1SmFCeE5WUm1MenlrM1hGNkhBU2JBd1VBNGxQcThwZnFMT05jd082OXJDZ2cxNWhVTUo5MTY3VlBkVGU3Qkp3ZmJiYzNENGtwdkVFNU9hT1hKZXB5N0R0S0NBVm43eTZ4QytRRFJYVklmd2dKZ3pJcXFWMGE5VU0zVTc0NWhsU3AzREFyTHNqZ2xKbE1rUVNaaWcrREsvYTZPejZPdzhJYzFzYVh2U1JtWmx0U2IxWE5KU1JoU2FZdUdGQ3BRWEdheWR2YnAvc004S1NDd0hXcllZMGQ2Ui9KQlBQdzlvRW43Y2kvZml3PS0tUFpPenBvNGpzbzUrZnBBZFk3L1lkZz09--012b883383c8d932f6157c6ee69eedfc7c260768; _gcl_au=1.1.590937953.1734117975; _gid=GA1.2.996334334.1734117978; cebs=1; afUserId=03b59be1-68b2-456d-8a77-eb5f934e7fc4-p; AF_SYNC=1734117979829; _ce.clock_data=-1075%2C180.253.68.232%2C1%2Cf51bb482c660d0eeadd1f058058a2b35%2CChrome%2CID; moe_uuid=b9331855-aaba-4173-a07e-ccfbbff62e56; USER_DATA=%7B%22attributes%22%3A%5B%5D%2C%22subscribedToOldSdk%22%3Afalse%2C%22deviceUuid%22%3A%22b9331855-aaba-4173-a07e-ccfbbff62e56%22%2C%22deviceAdded%22%3Atrue%7D; _ga_JBTBSESXVN=GS1.1.1734147956.2.0.1734147956.60.0.0; _ga=GA1.2.2106467955.1734117978; _tt_enable_cookie=1; _ttp=6-SEIVetBeTtM0Q-f63cK3pRPel.tt.1; cebsp_=2; SESSION=%7B%22sessionKey%22%3A%227e27aad5-6596-4836-9027-4ee113fbdb55%22%2C%22sessionStartTime%22%3A%222024-12-14T03%3A46%3A02.899Z%22%2C%22sessionMaxTime%22%3A1800%2C%22customIdentifiersToTrack%22%3A%5B%5D%2C%22sessionExpiryTime%22%3A1734149763141%2C%22numberOfSessions%22%3A3%2C%22currentSource%22%3A%7B%22source_url%22%3A%22https%3A%2F%2Fm.vidio.com%2Ftelcos%2Fxl%2Fclaim%2F%3Futm_source%3Dsmsaxis%22%2C%22source%22%3A%22smsaxis%22%7D%7D; _ce.s=v~46f6867c2f88c1ce7b6b8c7fbc56fefc4fb8d8d4~lcw~1734147970847~vir~new~lva~1734117979507~vpv~0~v11.fhb~1734117979896~v11.lhb~1734147958421~v11.cs~265059~v11.s~ee0194d0-b9cd-11ef-9db1-5f898334ebdb~v11.sla~1734147970919~gtrk.la~m4nmxdy7~lcw~1734147970919",
+                  origin: "https://m.vidio.com",
+                  priority: "u=1, i",
+                  referer: "https://m.vidio.com/",
+                  "sec-ch-ua":
+                    '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+                  "sec-ch-ua-mobile": "?0",
+                  "sec-ch-ua-platform": '"Windows"',
+                  "sec-fetch-dest": "empty",
+                  "sec-fetch-mode": "cors",
+                  "sec-fetch-site": "same-site",
+                  "user-agent":
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                  "x-api-key":
+                    "CH1ZFsN4N/MIfAds1DL9mP151CNqIpWHqZGRr+LkvUyiq3FRPuP1Kt6aK+pG3nEC1FXt0ZAAJ5FKP8QU8CZ5/qAyjFei4IQV5bnLLvdI/nQPkNPNLdL3zfrDc9dhlAd+Jjf7BtbRDZmc5x30O4ZrDXQ/f2PC22FLX5Mr/QgYDeU=",
+                  "x-api-platform": "web-mobile",
+                  "x-secure-level": "2",
+                },
+                proxy: proxyauth,
+              });
+              console.log(JSON.stringify(claimBUndle.respon));
+              let otpCodenew;
+              let datanew;
+              let otpnew;
+              do {
+                try {
+                  const smsnew = new SMSActivate(apikey, "smshub");
+                  const balancenew = await smsnew.getBalance();
+                  log(`Saldo SMSHUB ${balancenew} руб`, "warning");
+                  try {
+                    do {
+                      datanew = await smsnew.getNumber("fv", 6, "telkomsel");
+                      // console.log(data);
+                    } while (datanew === null);
+                  } catch (err) {
+                    log(`Gagal Mendapatkan Nomer ${err}`, "error");
+                    await delay(5000);
+                    continue;
+                  }
+                  let { id, number } = datanew;
+                  await smsnew.setStatus(id, 1);
+                  log(
+                    `Try To Switch Number in Account [ ${number} ]`,
+                    "warning"
+                  );
+                  const PhoneNumbernew = filterNumber(number.toString());
+                  const SendverifySmsHubnewsu = await curl({
+                    endpoint: "https://www.vidio.com/dashboard/setting/phone",
+                    data: new URLSearchParams({
+                      "user[phone]": PhoneNumbernew,
+                    }),
+                    header: {
+                      accept:
+                        "text/javascript, application/javascript, application/ecmascript, application/x-ecmascript, */*; q=0.01",
+                      "accept-language": "en-US,en;q=0.9",
+                      "content-type":
+                        "application/x-www-form-urlencoded; charset=UTF-8",
+                      cookie: cookies,
+                      origin: "https://www.vidio.com",
+                      priority: "u=1, i",
+                      referer: "https://www.vidio.com/dashboard/setting",
+                      "sec-ch-ua":
+                        '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+                      "sec-ch-ua-mobile": "?0",
+                      "sec-ch-ua-platform": '"Windows"',
+                      "sec-fetch-dest": "empty",
+                      "sec-fetch-mode": "cors",
+                      "sec-fetch-site": "same-origin",
+                      "user-agent":
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                      "x-csrf-token": crfs,
+                      "x-requested-with": "XMLHttpRequest",
+                    },
+                    proxy: proxyauth,
+                  });
+
+                  if (
+                    SendverifySmsHubnewsu.respon.message ===
+                    "Verification code sent!"
+                  ) {
+                    log(
+                      ` ${SendverifySmsHubnewsu.respon.message} With Sms Hub`,
+                      "success"
+                    );
+
+                    let count = 0;
+                    do {
+                      otpCodenew = await smsnew.getCode(id);
+                      // console.log(otpCode);
+                      if (count === 60) {
+                        await smsnew.setStatus(id, 8);
+                      }
+                      await delay(1000);
+                      count++;
+                      // console.log(otpCode);
+                    } while (otpCodenew === "STATUS_WAIT_CODE");
+                    if (otpCodenew === "STATUS_CANCEL") {
+                      log("Cancel Phone Number", "error");
+                      otpCode === "STATUS_CANCEL";
+                    } else {
+                      otpnew = otpCodenew;
+                      log("SMS OTP : " + otpnew, "success");
+                    }
+                    const VerifyOtpHubnewsu = await curl({
+                      endpoint: "https://www.vidio.com/dashboard/setting/phone",
+                      data: new URLSearchParams({
+                        "user[phone_confirmation_code]": otpnew,
+                      }),
+                      header: {
+                        accept:
+                          "text/javascript, application/javascript, application/ecmascript, application/x-ecmascript, */*; q=0.01",
+                        "accept-language": "en-US,en;q=0.9",
+                        "content-type":
+                          "application/x-www-form-urlencoded; charset=UTF-8",
+                        cookie: cookies,
+                        origin: "https://www.vidio.com",
+                        priority: "u=1, i",
+                        referer: "https://www.vidio.com/dashboard/setting",
+                        "sec-ch-ua":
+                          '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+                        "sec-ch-ua-mobile": "?0",
+                        "sec-ch-ua-platform": '"Windows"',
+                        "sec-fetch-dest": "empty",
+                        "sec-fetch-mode": "cors",
+                        "sec-fetch-site": "same-origin",
+                        "user-agent":
+                          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                        "x-csrf-token": crfs,
+                        "x-requested-with": "XMLHttpRequest",
+                      },
+                      proxy: proxyauth,
+                      method: "PATCH",
+                    });
+                    if (VerifyOtpHubnewsu.respon.verified) {
+                      log(
+                        ` Verified status ${VerifyOtp.respon.verified} ${Phone} register success`,
+                        "success"
+                      );
+
+                      otpCode === "SUKSES";
+                    }
+                  }
+                } catch (error) {
+                  otpCode === "STATUS_CANCEL";
+                }
+              } while (otpCode === "STATUS_CANCEL");
+            } else {
+              log(VerifyOtpnew.respon.message, "error");
+            }
           } else {
-            log(VerifyOtpnew.respon.message, "error");
+            log(Sendverifynew.respon.message, "error");
           }
         } else {
-          log(Sendverifynew.respon.message, "error");
+          log(VerifyOtp.respon.message, "error");
         }
       } else {
-        log(VerifyOtp.respon.message, "error");
+        log(Sendverify.respon.message, "error");
       }
     } else {
       log("Token Not Successfuly Create..", "error");
@@ -546,12 +857,13 @@ function filterNumber(phoneNumber) {
       data: null,
       header: headers(
         visitor,
-        Register.respon.auth.authentication_token,
-        Register.respon.auth.email
+        Register.respon.access_token,
+        Register.respon.auth.email,
+        Register.respon.auth.authentication_token
       ),
       proxy: proxyauth,
     });
-    console.log(validasisubcription);
+    console.log(validasisubcription.respon);
     const count = validasisubcription.respon.subscriptions;
     if (count.lenght > 0) {
       fs.appendFileSync(
@@ -569,8 +881,9 @@ function filterNumber(phoneNumber) {
       data: null,
       header: headers(
         visitornew,
-        Registernew.respon.auth.authentication_token,
-        Registernew.respon.auth.email
+        Registernew.respon.access_token,
+        Registernew.respon.auth.email,
+        Registernew.respon.auth.authentication_token
       ),
       proxy: proxyauth,
     });

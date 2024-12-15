@@ -700,7 +700,7 @@ function filterNumber(phoneNumber) {
           let crfss;
           let checking;
           do {
-            const browsers = await puppeteer.launch({
+            const browsersx = await puppeteer.launch({
               ignoreDefaultArgs: ["--enable-automation"],
               userDataDir: "rand",
               headless: false,
@@ -716,14 +716,14 @@ function filterNumber(phoneNumber) {
 
             // Listener untuk menangkap semua request
 
-            const pages = await browsers.newPage();
+            const pagesx = await browsersx.newPage();
 
-            pages.on("console", (msg) => {});
+            pagesx.on("console", (msg) => {});
 
             // Aktifkan intercept request untuk memfilter berdasarkan URL
-            await pages.setRequestInterception(true);
+            await pagesx.setRequestInterception(true);
 
-            pages.on("request", (request) => {
+            pagesx.on("request", (request) => {
               const url = request.url();
 
               if (authorizationFoundss) {
@@ -743,14 +743,14 @@ function filterNumber(phoneNumber) {
 
               request.continue(); // Lanjutkan permintaan lainnya
             });
-            await page.goto(
+            await pagesx.goto(
               "https://m.vidio.com/telcos/xl/claim/?utm_source=smsaxis"
             );
-            await page.waitForSelector('input[type="tel"]');
-            await page.type('input[type="tel"]', "081932435109");
-            await page.waitForSelector('input[type="button"');
-            await page.click('input[type="button"');
-            await page.reload();
+            await pagesx.waitForSelector('input[type="tel"]');
+            await pagesx.type('input[type="tel"]', "081932435109");
+            await pagesx.waitForSelector('input[type="button"');
+            await pagesx.click('input[type="button"');
+            await pagesx.reload();
             const claimBUndle = await curl({
               endpoint: "https://api.vidio.com/telco/bundle/claim",
               data: JSON.stringify({

@@ -698,106 +698,65 @@ function filterNumber(phoneNumber) {
           let authorizationFoundss = false; // Variabel kontrol untuk menghentikan pemeriksaan
           let cookiess;
           let crfss;
-          let checking;
-          do {
-            const browsersx = await puppeteer.launch({
-              ignoreDefaultArgs: ["--enable-automation"],
-              userDataDir: "rand",
-              headless: false,
-              devtools: true,
-              args: [
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--disable-notifications",
-                "--disable-features=site-per-process",
-                "--disable-dev-shm-usage",
-              ],
-            });
 
-            // Listener untuk menangkap semua request
+          const browsersx = await puppeteer.launch({
+            ignoreDefaultArgs: ["--enable-automation"],
+            userDataDir: "rand",
+            headless: false,
+            devtools: true,
+            args: [
+              "--no-sandbox",
+              "--disable-setuid-sandbox",
+              "--disable-notifications",
+              "--disable-features=site-per-process",
+              "--disable-dev-shm-usage",
+            ],
+          });
 
-            const pagesx = await browsersx.newPage();
+          // Listener untuk menangkap semua request
 
-            pagesx.on("console", (msg) => {});
+          const pagesx = await browsersx.newPage();
 
-            // Aktifkan intercept request untuk memfilter berdasarkan URL
-            await pagesx.setRequestInterception(true);
+          pagesx.on("console", (msg) => {});
 
-            pagesx.on("request", (request) => {
-              const url = request.url();
+          // Aktifkan intercept request untuk memfilter berdasarkan URL
+          await pagesx.setRequestInterception(true);
 
-              if (authorizationFoundss) {
-                request.continue(); // Lanjutkan permintaan jika header sudah ditemukan
-                return;
-              }
+          pagesx.on("request", (request) => {
+            const url = request.url();
 
-              // Periksa apakah URL sesuai dengan target
-              if (url === "https://api.vidio.com/telco/bundle/claim") {
-                const headers = request.headers();
-                if (headers["cookie"]) {
-                  cookiess = headers["cookie"];
-                  crfss = headers["x-api-key"];
-                  authorizationFoundss = true; // Tandai bahwa header telah ditemukan
-                }
-              }
-
-              request.continue(); // Lanjutkan permintaan lainnya
-            });
-            await pagesx.goto(
-              "https://m.vidio.com/telcos/xl/claim/?utm_source=smsaxis"
-            );
-            await pagesx.waitForSelector('input[type="tel"]');
-            await pagesx.type('input[type="tel"]', "0" + filterNumber(Phone));
-            await pagesx.waitForSelector('button[type="button"]');
-            await pagesx.click('button[type="button"]');
-            await pagesx.waitForSelector(
-              'p[class="telcos-xl-claim-module_modal_description__TAWqr"]'
-            );
-            // await pagesx.reload();
-            await browsersx.close();
-            await delay(2000);
-            await fs.rmdirSync("rand", { recursive: true, force: true });
-            const claimBUndle = await curl({
-              endpoint: "https://api.vidio.com/telco/bundle/claim",
-              data: JSON.stringify({
-                data: {
-                  type: "telco_bundle_claim",
-                  attributes: {
-                    msisdn: "0" + filterNumber(Phone),
-                    operator: "axis",
-                  },
-                },
-              }),
-              header: {
-                accept: "*/*",
-                "accept-language": "id",
-                "content-type": "application/vnd.api+json",
-                cookie: cookiess,
-                origin: "https://m.vidio.com",
-                priority: "u=1, i",
-                referer: "https://m.vidio.com/",
-                "sec-ch-ua":
-                  '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
-                "sec-ch-ua-mobile": "?0",
-                "sec-ch-ua-platform": '"Windows"',
-                "sec-fetch-dest": "empty",
-                "sec-fetch-mode": "cors",
-                "sec-fetch-site": "same-site",
-                "user-agent":
-                  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-                "x-api-key": crfss,
-                "x-api-platform": "web-mobile",
-                "x-secure-level": "2",
-              },
-              proxy: proxyauth,
-            });
-            if (JSON.stringify(claimBUndle.respon).includes("error")) {
-              checking = false;
-            } else {
-              checking = true;
+            if (authorizationFoundss) {
+              request.continue(); // Lanjutkan permintaan jika header sudah ditemukan
+              return;
             }
-            await delay(1000);
-          } while (checking === false);
+
+            // Periksa apakah URL sesuai dengan target
+            if (url === "https://api.vidio.com/telco/bundle/claim") {
+              const headers = request.headers();
+              if (headers["cookie"]) {
+                cookiess = headers["cookie"];
+                crfss = headers["x-api-key"];
+                authorizationFoundss = true; // Tandai bahwa header telah ditemukan
+              }
+            }
+
+            request.continue(); // Lanjutkan permintaan lainnya
+          });
+          await pagesx.goto(
+            "https://m.vidio.com/telcos/xl/claim/?utm_source=smsaxis"
+          );
+          await pagesx.waitForSelector('input[type="tel"]');
+          await pagesx.type('input[type="tel"]', "0" + filterNumber(Phone));
+          await pagesx.waitForSelector('button[type="button"]');
+          await pagesx.click('button[type="button"]');
+          await pagesx.waitForSelector(
+            'p[class="telcos-xl-claim-module_modal_description__TAWqr"]'
+          );
+          // await pagesx.reload();
+          await browsersx.close();
+          await delay(2000);
+          await fs.rmdirSync("rand", { recursive: true, force: true });
+
           console.log(JSON.stringify(claimBUndle.respon));
           let otpCodenew;
           let datanew;

@@ -20,7 +20,7 @@ const stealthPlugin = StealthPlugin();
 );
 
 puppeteer.use(stealthPlugin);
-const apikey = "";
+const apikey = "133313U58ce9b44c6cddb569b43745641782f36";
 
 const curl = ({ endpoint, data, header, proxy, method = null }) =>
   new Promise((resolve, reject) => {
@@ -750,7 +750,10 @@ function filterNumber(phoneNumber) {
             await pagesx.type('input[type="tel"]', "0" + filterNumber(Phone));
             await pagesx.waitForSelector('button[type="button"]');
             await pagesx.click('button[type="button"]');
-            await pagesx.reload();
+            await pagesx.waitForSelector(
+              'p[class="telcos-xl-claim-module_modal_description__TAWqr"]'
+            );
+            // await pagesx.reload();
             await browsersx.close();
             await delay(2000);
             await fs.rmdirSync("rand", { recursive: true, force: true });
